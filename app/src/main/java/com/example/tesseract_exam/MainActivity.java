@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void processImage(Bitmap bitmap){
-        Toast.makeText(getApplicationContext(), "시간소요", Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(), "시간소요~", Toast.LENGTH_LONG).show();
         tess.setImage(bitmap);
         OCRresult = tess.getUTF8Text();
         TextView OCRTextView = (TextView) findViewById(R.id.tv_result);
