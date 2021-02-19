@@ -12,20 +12,21 @@ import android.widget.Toast;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import io.socket.client.IO;
 import io.socket.client.Socket;
-import io.socket.emitter.Emitter;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 //https://choijava.tistory.com/68 참조 방진
 public class MainActivity extends AppCompatActivity {
@@ -63,39 +64,96 @@ public class MainActivity extends AppCompatActivity {
         TextView OCRTextView = (TextView) findViewById(R.id.tv_result);
         OCRTextView.setText(OCRresult);
 
-        try{
-            mSocket = IO.socket("http://ec2-3-15-140-109.us-east-2.compute.amazonaws.com/ocr");
-            mSocket.connect();
-            mSocket.on(Socket.EVENT_CONNECT, onConnect);
-            mSocket.on("OCRresult", onMessageReceived);
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
+        Call<String> res = Net.getInstance().getOcrFactory().connect("bangjinhyuk");
+            res.enqueue(new Callback<String>() {
+                @Override
+                public void onResponse(Call<String> call, Response<String> response) {
+                    if(response.isSuccessful()){
+                        if(response.body() != null){
+                            String success = response.body().toString();
+                            Log.d("Main 통신", response.body().toString());
+                        }else{
+                            Log.e("Main 통신", "실패 1 response 내용이 없음");
+                        }
+                    }else{
+                        Log.e("Main 통신", "실패 2 서버 에러");
+                    }
+                }
 
-        String finalOCRresult = OCRresult;
+                @Override
+                public void onFailure(Call<String> call, Throwable t) {
+                    Log.e("Main 통신", "실패 3 통신 에러 "+t.getLocalizedMessage());
+                }
+            });
+
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("name","bbangi");
+        map.put("birth", "0103");
+
+        Call<Semester> res1 = Net.getInstance().getOcrFactory().connecting(map);
+        res1.enqueue(new Callback<Semester>() {
+            @Override
+            public void onResponse(Call<Semester> call, Response<Semester> response) {
+                if(response.isSuccessful()){
+                    if(response.body() != null){
+                        Semester semesters = response.body();
+                        Log.d("Map 통신", semesters.toString());
+                    }else{
+                        Log.e("Map 통신", "실패 1 response 내용이 없음");
+                    }
+                }else{
+                    Log.e("Map 통신", "실패 2 서버 에러");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Semester> call, Throwable t) {
+                Log.e("Map 통신", "실패 3 통신 에러 "+t.getLocalizedMessage());
+
+            }
+        });
+
+        Req_semester req_semester = new Req_semester();
+        req_semester.setSemester(new Semester("소프트웨어학과",
+                "미디어학과",
+                "컴구",
+                "창소입",
+                "기창경",
+                "",
+                ""
+        ));
+        Call<Res_semester> res2 = Net.getInstance().getOcrFactory().semester(req_semester);
+        res2.enqueue(new Callback<Res_semester>() {
+            @Override
+            public void onResponse(Call<Res_semester> call, Response<Res_semester> response) {
+                if(response.isSuccessful()) {
+                    if (response.body() != null) {
+                        Res_semester res_semester = response.body();
 
 
+                        Log.d("semester 통신",res_semester.code+"");
+
+                    } else {
+                        Log.e("semester 통신", "실패 1 response 내용이 없음");
+                    }
+                }else{
+                    Log.e("semester 통신", "실패 2 서버 에러");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Res_semester> call, Throwable t) {
+
+                Log.e("semester 통신", "실패 3 통신 에러 "+t.getLocalizedMessage());
+
+            }
+        });
 
 
     }
-    private Emitter.Listener onConnect = new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-            mSocket.emit("clientMessage", OCRresult);
-        }
-    };
 
-    private  Emitter.Listener onMessageReceived = new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-            try {
-                JSONObject success = (JSONObject) args[0];
-                Log.d("서버 결과", success.getString("success"));
-            }catch (JSONException e){
-                e.printStackTrace();
-            }
-        }
-    };
+
+
 
     private void copyFiles(String lang){
         try {
@@ -135,4 +193,27 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+}
+
+class Res_semester {
+
+    int code; //서버로부터의 응답 코드. 404, 500, 200 등.
+    String msg; //서버로부터의 응답 메세지.
+    Semester semester; //가입한 유저 정보.
+
+}
+class Req_semester {
+
+
+    Semester semester;
+
+
+    public Semester getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Semester semester) {
+        this.semester = semester;
+    }
+
 }
